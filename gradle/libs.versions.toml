@@ -12,6 +12,7 @@ core = "1.13.1"
 fragment = "1.8.3"
 material = "1.11.0"
 androidPdfViewer = "3.2.0-beta06"
+pdfbox = "2.0.27.0"
 generateBp = "+"
 
 [libraries]
@@ -21,6 +22,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
 android-pdf-viewer = { group = "io.github.oothp", name = "android-pdf-viewer", version.ref = "androidPdfViewer" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfbox" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

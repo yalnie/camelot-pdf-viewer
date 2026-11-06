@@ -64,6 +64,9 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.android.pdf.viewer)
     implementation(libs.material)
+    implementation(libs.pdfbox.android) {
+        exclude(group = "org.bouncycastle")
+    }
 }
 
 configure<GenerateBpPluginExtension> {

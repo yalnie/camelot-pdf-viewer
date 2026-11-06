@@ -26,3 +26,6 @@
 # PDFView and Pdfium
 -keep class com.github.barteksc.pdfviewer.** { *; }
 -keep class com.shockwave.** { *; }
+
+# PDFBox
+-keep class com.tom_roush.pdfbox.** { *; }

@@ -7,6 +7,7 @@ package org.lineageos.camelot
 
 import android.app.Application
 import com.google.android.material.color.DynamicColors
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 
 class CamelotApplication : Application() {
     override fun onCreate() {
@@ -14,5 +15,8 @@ class CamelotApplication : Application() {
 
         // Observe dynamic colors changes
         DynamicColors.applyToActivitiesIfAvailable(this)
+
+        // Initialize PDFBox for in-page search
+        PDFBoxResourceLoader.init(this)
     }
 }

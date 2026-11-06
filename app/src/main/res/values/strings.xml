@@ -15,4 +15,9 @@
     <!-- Download results -->
     <string name="download_successful">Download successful</string>
     <string name="download_error">Error while downloading the file</string>
+
+    <!-- Page indicator & search -->
+    <string name="page_number_format" translatable="false">%1$d / %2$d</string>
+    <string name="match_count_format" translatable="false">%1$d / %2$d</string>
+    <string name="no_matches" translatable="false">0 / 0</string>
 </resources>
