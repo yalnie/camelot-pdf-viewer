@@ -25,8 +25,8 @@ android_app {
         "androidx.appcompat_appcompat",
         "androidx.core_core-ktx",
         "androidx.fragment_fragment-ktx",
-        "Camelot_androidx.pdf_pdf-viewer-fragment",
         "com.google.android.material_material",
+        "Camelot_io.github.oothp_android-pdf-viewer",
         "kotlin-stdlib",
     ],
 

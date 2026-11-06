@@ -17,9 +17,9 @@ import android.view.View.MeasureSpec
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.annotation.RequiresExtension
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -36,7 +36,6 @@ import org.lineageos.camelot.print.CamelotPdfDocumentAdapter
 import org.lineageos.camelot.viewmodels.PdfViewModel
 import kotlin.reflect.cast
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 13)
 class PdfViewerActivity : AppCompatActivity(R.layout.activity_main) {
     // View models
     private val pdfViewModel by viewModels<PdfViewModel>()
@@ -172,13 +171,13 @@ class PdfViewerActivity : AppCompatActivity(R.layout.activity_main) {
 
         R.id.action_print -> {
             pdfUri?.let {
-                val printManager = getSystemService(PrintManager::class.java)
+                val printManager = ContextCompat.getSystemService(this, PrintManager::class.java)
                 val printDocumentAdapter = CamelotPdfDocumentAdapter(
                     contentResolver,
                     it,
                     pdfViewModel.pdfName.value ?: getString(R.string.pdf_document)
                 )
-                printManager.print(
+                printManager?.print(
                     printDocumentAdapter.name,
                     printDocumentAdapter,
                     PrintAttributes.Builder().build()

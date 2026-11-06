@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "org.lineageos.camelot"
-        minSdk = 35
+        minSdk = 21
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -62,9 +62,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.fragment.ktx)
-    implementation(libs.androidx.pdf.viewer.fragment) {
-        exclude("org.jspecify", "jspecify")
-    }
+    implementation(libs.android.pdf.viewer)
     implementation(libs.material)
 }
 
@@ -73,11 +71,7 @@ configure<GenerateBpPluginExtension> {
     minSdk.set(android.defaultConfig.minSdk!!)
     availableInAOSP.set { module: Module ->
         when {
-            module.group.startsWith("androidx") -> {
-                // We provide our own androidx.pdf
-                !module.group.startsWith("androidx.pdf")
-            }
-
+            module.group.startsWith("androidx") -> true
             module.group.startsWith("org.jetbrains") -> true
             module.group == "com.google.android.material" -> true
             module.group == "com.google.errorprone" -> true

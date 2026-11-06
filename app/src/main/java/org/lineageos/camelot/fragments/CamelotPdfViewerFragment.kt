@@ -5,108 +5,191 @@
 
 package org.lineageos.camelot.fragments
 
-import android.graphics.Rect
-import android.os.Build
+import android.content.ContentResolver
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.View
-import android.view.ViewGroup
-import androidx.annotation.RequiresExtension
+import android.widget.FrameLayout
+import android.widget.ProgressBar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.marginBottom
-import androidx.core.view.marginLeft
-import androidx.core.view.marginRight
-import androidx.core.view.marginTop
-import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.pdf.viewer.fragment.PdfViewerFragment
-import androidx.pdf.viewer.fragment.pdfName
-import androidx.pdf.widget.FastScrollView
-import androidx.pdf.widget.pageIndicatorExt
-import androidx.pdf.widget.zoomView
-import androidx.pdf.widget.zoomViewBasePadding
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.github.barteksc.pdfviewer.PDFView
+import com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import org.lineageos.camelot.R
 import org.lineageos.camelot.viewmodels.PdfViewModel
 
-@RequiresExtension(extension = Build.VERSION_CODES.S, version = 13)
-class CamelotPdfViewerFragment : PdfViewerFragment() {
+class CamelotPdfViewerFragment : Fragment(R.layout.fragment_camelot_pdf_viewer) {
     private val pdfViewModel by activityViewModels<PdfViewModel>()
+
+    private var pdfView: PDFView? = null
+    private var progressBar: ProgressBar? = null
+    private var container: FrameLayout? = null
+
+    private var totalPages: Int = 0
+    private var systemInsets: WindowInsetsCompat = WindowInsetsCompat.CONSUMED
+
+    var documentUri: Uri? = null
+        set(value) {
+            field = value
+            loadDocument()
+        }
+
+    var isTextSearchActive: Boolean = false
+        set(value) {
+            field = value
+            if (value) {
+                showJumpToPageDialog()
+            }
+        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        ViewCompat.setOnApplyWindowInsetsListener(
-            view.findViewById(androidx.pdf.R.id.fast_scroll_view)
-        ) { v, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+        container = view.findViewById(R.id.pdfViewerContainer)
+        pdfView = view.findViewById(R.id.pdfView)
+        progressBar = view.findViewById(R.id.progressBar)
 
-            if (!pdfViewModel.immersiveMode.value) {
-                @Suppress("RestrictedApi")
-                (v as FastScrollView).apply {
-                    /**
-                     * @see FastScrollView.onApplyWindowInsets
-                     */
-                    zoomView?.also { zoomView ->
-                        zoomViewBasePadding.let {
-                            zoomView.setPadding(
-                                0,
-                                it.top + insets.top + pdfViewModel.toolbarHeight.value,
-                                0,
-                                it.bottom + insets.bottom,
-                            )
-                        }
-
-                        setScrollbarMarginTop(zoomView.paddingTop)
-                        setVerticalThumbMarginRight(insets.right)
-                        setScrollbarMarginBottom(zoomView.paddingBottom)
-                    }
-
-                    pageIndicatorExt.view.translationX = (-insets.right).toFloat()
-
-                    forceLayout()
-                }
-            }
-
+        ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
+            systemInsets = windowInsets
+            updateInsets()
             windowInsets
         }
 
-        view.findViewById<FloatingActionButton>(androidx.pdf.R.id.edit_fab).let {
-            val originalMargins = Rect(
-                it.marginLeft,
-                it.marginTop,
-                it.marginRight,
-                it.marginBottom,
-            )
-
-            ViewCompat.setOnApplyWindowInsetsListener(it) { v, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-
-                if (!pdfViewModel.immersiveMode.value) {
-                    v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                        bottomMargin = originalMargins.bottom + insets.bottom
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    pdfViewModel.toolbarHeight.collectLatest {
+                        updateInsets()
                     }
                 }
-
-                windowInsets
+                launch {
+                    pdfViewModel.immersiveMode.collectLatest {
+                        updateInsets()
+                    }
+                }
             }
+        }
+
+        if (documentUri != null) {
+            loadDocument()
         }
     }
 
-    override fun onLoadDocumentSuccess() {
-        super.onLoadDocumentSuccess()
-
-        pdfViewModel.setPdfName(pdfName)
+    override fun onDestroyView() {
+        pdfView = null
+        progressBar = null
+        container = null
+        super.onDestroyView()
     }
 
-    override fun onLoadDocumentError(error: Throwable) {
-        super.onLoadDocumentError(error)
+    private fun loadDocument() {
+        val uri = documentUri ?: return
+        val currentPdfView = pdfView ?: return
 
-        pdfViewModel.setPdfName(null)
+        progressBar?.visibility = View.VISIBLE
+
+        currentPdfView.fromUri(uri)
+            .enableSwipe(true)
+            .swipeHorizontal(false)
+            .enableDoubletap(true)
+            .defaultPage(0)
+            .spacing(8)
+            .scrollHandle(DefaultScrollHandle(requireContext()))
+            .onLoad { nbPages ->
+                totalPages = nbPages
+                progressBar?.visibility = View.GONE
+                val name = getFileName(uri) ?: getString(R.string.pdf_document)
+                pdfViewModel.setPdfName(name)
+            }
+            .onError {
+                progressBar?.visibility = View.GONE
+                pdfViewModel.setPdfName(null)
+            }
+            .onTap {
+                pdfViewModel.setImmersiveMode(!pdfViewModel.immersiveMode.value)
+                true
+            }
+            .load()
     }
 
-    override fun onRequestImmersiveMode(enterImmersive: Boolean) {
-        super.onRequestImmersiveMode(enterImmersive)
+    private fun updateInsets() {
+        val insets = systemInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+        val isImmersive = pdfViewModel.immersiveMode.value
+        val topPadding = if (isImmersive) 0 else (insets.top + pdfViewModel.toolbarHeight.value)
+        val bottomPadding = if (isImmersive) 0 else insets.bottom
 
-        pdfViewModel.setImmersiveMode(enterImmersive)
+        container?.updatePadding(
+            left = insets.left,
+            top = topPadding,
+            right = insets.right,
+            bottom = bottomPadding
+        )
+    }
+
+    private fun getFileName(uri: Uri): String? {
+        if (uri.scheme == ContentResolver.SCHEME_CONTENT) {
+            try {
+                requireContext().contentResolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (index != -1) {
+                            val name = cursor.getString(index)
+                            if (!name.isNullOrBlank()) {
+                                return name
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return uri.lastPathSegment?.substringAfterLast('/')
+    }
+
+    private fun showJumpToPageDialog() {
+        if (totalPages <= 0) return
+
+        val context = requireContext()
+        val textInputLayout = TextInputLayout(context).apply {
+            setPadding(48, 16, 48, 0)
+        }
+        val input = TextInputEditText(context).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            val currentPageNum = (pdfView?.currentPage ?: 0) + 1
+            setText(currentPageNum.toString())
+            setSelection(text?.length ?: 0)
+        }
+        textInputLayout.addView(input)
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle(getString(R.string.find_in_page))
+            .setMessage("1 – $totalPages")
+            .setView(textInputLayout)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val pageNum = input.text?.toString()?.toIntOrNull()
+                if (pageNum != null && pageNum in 1..totalPages) {
+                    pdfView?.jumpTo(pageNum - 1, true)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }

@@ -22,3 +22,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# PDFView and Pdfium
+-keep class com.github.barteksc.pdfviewer.** { *; }
+-keep class com.shockwave.** { *; }
